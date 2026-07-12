@@ -1,4 +1,4 @@
-const CACHE_NAME = "levelup-v1";
+const CACHE_NAME = "levelup-v2";
 
 const APP_SHELL = [
   "./",
@@ -41,20 +41,23 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+// Network-first, cache as fallback. This is a solo-user app that gets
+// pushed updates directly (no version picker, no "new version available"
+// prompt) — so whenever there's a connection, always serve the latest
+// code rather than whatever happened to get cached last. The cache exists
+// purely for offline use, not for speed, and stays fresh as a side effect
+// of every successful online fetch.
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET" || new URL(req.url).origin !== self.location.origin) return;
 
   event.respondWith(
-    caches.match(req).then((cached) => {
-      if (cached) return cached;
-      return fetch(req)
-        .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
-          return res;
-        })
-        .catch(() => cached);
-    })
+    fetch(req)
+      .then((res) => {
+        const copy = res.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
+        return res;
+      })
+      .catch(() => caches.match(req))
   );
 });
