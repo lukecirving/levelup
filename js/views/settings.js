@@ -1,8 +1,21 @@
 import { store } from "../store.js";
 import { daysBetween, todayISO } from "../utils/dates.js";
-import { showToast } from "../app.js";
+import { showToast, isInstallable, isStandalone, isIOS, triggerInstall } from "../app.js";
 import { esc } from "../utils/esc.js";
 import { uid } from "../utils/ids.js";
+
+function installSectionHTML() {
+  if (isStandalone()) {
+    return `<div class="card"><p class="small">✓ You're using the installed app.</p></div>`;
+  }
+  if (isInstallable()) {
+    return `<button class="btn primary block" id="installBtn">Install LevelUp</button>`;
+  }
+  if (isIOS()) {
+    return `<div class="card"><p class="small">On iPhone/iPad: tap the <strong>Share</strong> icon in Safari, then <strong>Add to Home Screen</strong>.</p></div>`;
+  }
+  return `<div class="card"><p class="small muted">Look for an "Install" or "Add to Home Screen" option in your browser's menu.</p></div>`;
+}
 
 export function render(container) {
   const settings = store.getSettings();
@@ -15,6 +28,9 @@ export function render(container) {
       <input type="date" id="goalDate" value="${settings.goalDate || ""}" />
       <p class="small muted" id="goalPreview"></p>
     </div>
+
+    <div class="section-title">Install</div>
+    ${installSectionHTML()}
 
     <div class="section-title">Preferences</div>
     <div class="card field">
@@ -77,6 +93,15 @@ export function render(container) {
     updatePreview();
     showToast("Goal date saved");
   });
+
+  const installBtn = container.querySelector("#installBtn");
+  if (installBtn) {
+    installBtn.addEventListener("click", async () => {
+      const accepted = await triggerInstall();
+      showToast(accepted ? "Installed!" : "Install dismissed");
+      render(container);
+    });
+  }
 
   container.querySelector("#units").addEventListener("change", (e) => {
     const s = store.getSettings();
