@@ -324,6 +324,42 @@ textarea { resize: vertical; min-height: 64px; }
 .history-item .hist-head { display: flex; justify-content: space-between; font-weight: 700; font-size: 13.5px; }
 .history-item .hist-body { margin-top: 4px; font-size: 12.5px; color: var(--text-dim); line-height: 1.5; }
 
+.filter-row { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+.filter-pill {
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.filter-pill.active { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+.filter-select { max-width: 200px; }
+
+.tag-chip {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  margin: 2px 5px 2px 0;
+}
+.tag-chip.location-home { background: var(--accent-soft); color: var(--accent); }
+.tag-chip.location-range { background: var(--accent-2-soft); color: var(--accent-2); }
+.tag-chip.location-course { background: var(--danger-soft); color: var(--danger); }
+
+.practice-row { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px; background: var(--surface-2); }
+.practice-row + .practice-row { margin-top: 8px; }
+.practice-row .check-label { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 13.5px; cursor: pointer; }
+.practice-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); flex-shrink: 0; }
+.practice-row .reps-fields { display: flex; gap: 8px; margin-top: 8px; margin-left: 28px; }
+
 @media (prefers-reduced-motion: reduce) {
   .btn, .toast { transition: none; }
 }

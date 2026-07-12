@@ -2,6 +2,7 @@ import { store } from "../store.js";
 import { showToast } from "../app.js";
 import { formatShort, weekdayLabel, todayISO } from "../utils/dates.js";
 import * as sched from "../schedule.js";
+import { GOLF_DRILLS } from "../data/golfDrills.js";
 
 const RIDE_LABEL = { confirmed: "Ride confirmed", maybe: "Ride maybe", none: "No ride", unset: "Set ride status" };
 
@@ -12,7 +13,12 @@ function getDeps() {
     dayPlans: store.getDayPlans(),
     checklistItems: store.getChecklistItems(),
     goalDate: store.getSettings().goalDate,
+    golfPracticeLogs: store.getGolfPracticeLogs(),
   };
+}
+
+function drillNames(ids) {
+  return ids.map((id) => GOLF_DRILLS.find((d) => d.id === id)?.name).filter(Boolean).join(", ");
 }
 
 function persistAndRerender(newDayPlans, container) {
@@ -46,7 +52,7 @@ function dayCardHTML(date, plan, deps) {
       <select class="duration-select" data-date="${date}">
         ${[20, 25, 30, 40, 45, 60].map((m) => `<option value="${m}" ${m === plan.golf.targetDurationMin ? "selected" : ""}>${m} min</option>`).join("")}
       </select>
-      <br><span class="small">Drills library lands soon — for now, freestyle on the net &amp; mat.</span>
+      <br><span class="small">${drillNames(plan.golf.drillIds) || "Freestyle on the net & mat"}</span>
     </div>`;
   } else {
     typeRow = `<div class="day-type-row type-rest"><span class="glyph">😴</span> Rest day</div>`;

@@ -1,4 +1,5 @@
 import { addDays, daysBetween, todayISO } from "./utils/dates.js";
+import { GOLF_DRILLS } from "./data/golfDrills.js";
 
 export const RIDE_STATUS_CYCLE = ["confirmed", "maybe", "none", "unset"];
 export const WINDOW_DAYS = 9;
@@ -26,6 +27,42 @@ export function emphasisTier(dateISO, goalDate) {
 
 export function windowDates(startISO = todayISO(), count = WINDOW_DAYS) {
   return Array.from({ length: count }, (_, i) => addDays(startISO, i));
+}
+
+function dateHash(dateISO) {
+  let h = 0;
+  for (let i = 0; i < dateISO.length; i++) h = (h * 31 + dateISO.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+/**
+ * Deterministic per-date drill pick: same (date, tier, recent logs) always
+ * produces the same result, so it's stable across re-renders. It only
+ * changes when the tier shifts (goal date getting closer) or the user
+ * actually logs a practice session — never just from reopening the app.
+ */
+function pickHomeDrills(dateISO, tier, golfPracticeLogs) {
+  const home = GOLF_DRILLS.filter((d) => d.location === "home");
+  if (!home.length) return [];
+
+  const focusText = tier.focus.toLowerCase();
+  const priority = home.filter((d) => d.focus.some((f) => focusText.includes(f.replace("-", " "))));
+  const ordered = priority.length ? [...priority, ...home.filter((d) => !priority.includes(d))] : home;
+
+  const recentIds = new Set(
+    [...golfPracticeLogs]
+      .sort((a, b) => (a.date < b.date ? 1 : -1))
+      .slice(0, 3)
+      .flatMap((log) => log.drills.map((d) => d.drillId))
+  );
+  const fresh = ordered.filter((d) => !recentIds.has(d.id));
+  const pool = fresh.length >= 2 ? fresh : ordered;
+
+  const count = Math.max(2, Math.min(4, Math.round(tier.durationMin / 15)));
+  const start = dateHash(dateISO) % pool.length;
+  const picks = [];
+  for (let i = 0; i < count && i < pool.length; i++) picks.push(pool[(start + i) % pool.length].id);
+  return picks;
 }
 
 function findPlanDayIndex(gymPlan, planDayId) {
@@ -57,7 +94,7 @@ function seedCursor(gymPlan, existingDayPlans, gymSessions, beforeDate) {
  * user has manually locked. Returns a plain { [date]: dayPlan } object —
  * callers merge it into the full store.
  */
-export function buildSchedule(dates, { gymPlan, gymSessions, dayPlans, checklistItems, goalDate }) {
+export function buildSchedule(dates, { gymPlan, gymSessions, dayPlans, checklistItems, goalDate, golfPracticeLogs = [] }) {
   const result = {};
   const habitFocus = checklistItems.filter((i) => i.active).map((i) => i.id);
   let cursor = seedCursor(gymPlan, dayPlans, gymSessions, dates[0]);
@@ -98,10 +135,11 @@ export function buildSchedule(dates, { gymPlan, gymSessions, dayPlans, checklist
       }
     } else if (type === "home-practice") {
       const tier = emphasisTier(date, goalDate);
+      const durationMin = existing?.golf?.targetDurationMin || tier.durationMin;
       plan.golf = {
-        targetDurationMin: existing?.golf?.targetDurationMin || tier.durationMin,
+        targetDurationMin: durationMin,
         focus: tier.focus,
-        drillIds: existing?.golf?.drillIds || [],
+        drillIds: pickHomeDrills(date, { ...tier, durationMin }, golfPracticeLogs),
         sessionLogged: existing?.golf?.sessionLogged || false,
       };
     }

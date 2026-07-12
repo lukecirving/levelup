@@ -2,6 +2,7 @@ import { store } from "../store.js";
 import { showToast } from "../app.js";
 import { formatPretty, todayISO } from "../utils/dates.js";
 import * as sched from "../schedule.js";
+import { GOLF_DRILLS } from "../data/golfDrills.js";
 
 const RIDE_LABEL = { confirmed: "Ride confirmed", maybe: "Ride maybe", none: "No ride", unset: "Set ride status" };
 
@@ -12,7 +13,12 @@ function getDeps() {
     dayPlans: store.getDayPlans(),
     checklistItems: store.getChecklistItems(),
     goalDate: store.getSettings().goalDate,
+    golfPracticeLogs: store.getGolfPracticeLogs(),
   };
+}
+
+function drillNames(ids) {
+  return ids.map((id) => GOLF_DRILLS.find((d) => d.id === id)?.name).filter(Boolean).join(", ");
 }
 
 function ensureToday() {
@@ -36,7 +42,8 @@ function planCardHTML(plan) {
     return `
       <div class="day-type-row"><span class="glyph">⛳</span> Home practice</div>
       <p class="day-detail" style="margin-top:6px;">${plan.golf.targetDurationMin} min · ${plan.golf.focus}</p>
-      <p class="small muted" style="margin-top:10px;">Drills library and practice logging arrive soon.</p>
+      <p class="day-detail" style="margin-top:4px;">${drillNames(plan.golf.drillIds)}</p>
+      <p class="small muted" style="margin-top:10px;">${plan.golf.sessionLogged ? "✓ Practice logged today." : "Head to the Golf tab to log this session."}</p>
     `;
   }
   return `

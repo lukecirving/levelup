@@ -2,10 +2,7 @@ import { store } from "../store.js";
 import { showToast } from "../app.js";
 import { uid } from "../utils/ids.js";
 import { todayISO, formatPretty } from "../utils/dates.js";
-
-function esc(s) {
-  return String(s ?? "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
-}
+import { esc } from "../utils/esc.js";
 
 let activeSubtab = "log";
 let rootContainer = null;
