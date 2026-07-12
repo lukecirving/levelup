@@ -1,7 +1,8 @@
 import { store } from "../store.js";
 import { showToast } from "../app.js";
-import { formatPretty, todayISO } from "../utils/dates.js";
+import { formatPretty, todayISO, addDays } from "../utils/dates.js";
 import { esc } from "../utils/esc.js";
+import { heatmapRowHTML } from "../utils/charts.js";
 import * as sched from "../schedule.js";
 import { GOLF_DRILLS } from "../data/golfDrills.js";
 
@@ -58,6 +59,45 @@ function planCardHTML(plan) {
   `;
 }
 
+function currentStreak(itemId, logs) {
+  let streak = 0;
+  let cursor = todayISO();
+  let first = true;
+  for (let i = 0; i < 365; i++) {
+    const done = !!logs[cursor]?.[itemId];
+    if (done) streak++;
+    else if (!first) break;
+    first = false;
+    cursor = addDays(cursor, -1);
+  }
+  return streak;
+}
+
+function consistencyCardHTML(items, logs) {
+  const active = items.filter((i) => i.active);
+  if (!active.length) return "";
+  return `
+    <div class="section-title">Consistency</div>
+    <div class="card">
+      ${active
+        .map((item) => {
+          const streak = currentStreak(item.id, logs);
+          const doneDates = new Set(Object.keys(logs).filter((d) => logs[d][item.id]));
+          return `
+            <div class="streak-item">
+              <div class="streak-head">
+                <strong>${item.icon ? item.icon + " " : ""}${esc(item.label)}</strong>
+                <span>${streak} day${streak === 1 ? "" : "s"}</span>
+              </div>
+              ${heatmapRowHTML(doneDates)}
+            </div>
+          `;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
 function checklistSectionHTML(category, title, items, logsToday) {
   const filtered = items.filter((i) => i.category === category && i.active).sort((a, b) => a.order - b.order);
   if (!filtered.length) return "";
@@ -104,6 +144,8 @@ export function render(container) {
         <button class="btn" id="addMealBtn">Add</button>
       </div>
     </div>
+
+    ${consistencyCardHTML(items, logs)}
   `;
 
   container.querySelector("#rideChip").addEventListener("click", () => {

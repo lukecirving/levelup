@@ -198,7 +198,49 @@ function renderHistory(container) {
       </div>`;
     return;
   }
-  container.innerHTML = `<div class="card">${logs.map(historyItemHTML).join("")}</div>`;
+
+  const sinceMonday = weekWindowDates();
+  const sessionsThisWeek = logs.filter((l) => sinceMonday.has(l.date)).length;
+
+  container.innerHTML = `
+    <div class="card" style="margin-bottom:12px;">
+      <div class="stat-row"><span>Home sessions this week</span><strong>${sessionsThisWeek}</strong></div>
+      ${makePercentRowsHTML(logs)}
+    </div>
+    <div class="card">${logs.map(historyItemHTML).join("")}</div>
+  `;
+}
+
+function weekWindowDates() {
+  const set = new Set();
+  const d = new Date();
+  for (let i = 0; i < 7; i++) {
+    const day = new Date(d);
+    day.setDate(d.getDate() - i);
+    set.add(`${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`);
+  }
+  return set;
+}
+
+function makePercentRowsHTML(logs) {
+  const totals = new Map(); // drillId -> { made, attempts }
+  logs.forEach((log) =>
+    log.drills.forEach((d) => {
+      if (!d.result) return;
+      const t = totals.get(d.drillId) || { made: 0, attempts: 0 };
+      t.made += d.result.made;
+      t.attempts += d.result.attempts;
+      totals.set(d.drillId, t);
+    })
+  );
+  if (!totals.size) return "";
+  return [...totals.entries()]
+    .map(([drillId, t]) => {
+      const drill = GOLF_DRILLS.find((g) => g.id === drillId);
+      const pct = t.attempts ? Math.round((t.made / t.attempts) * 100) : 0;
+      return `<div class="stat-row"><span>${esc(drill ? drill.name : "Drill")}</span><strong>${pct}% <span class="muted small">(${t.made}/${t.attempts})</span></strong></div>`;
+    })
+    .join("");
 }
 
 function historyItemHTML(log) {

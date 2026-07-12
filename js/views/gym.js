@@ -3,6 +3,7 @@ import { showToast } from "../app.js";
 import { uid } from "../utils/ids.js";
 import { todayISO, formatPretty } from "../utils/dates.js";
 import { esc } from "../utils/esc.js";
+import { lineChartSVG } from "../utils/charts.js";
 
 let activeSubtab = "log";
 let rootContainer = null;
@@ -12,9 +13,10 @@ export function render(container) {
   rootContainer = container;
   container.innerHTML = `
     <div class="subtabs" id="gymSubtabs">
-      <button class="subtab" data-tab="log">Log Session</button>
+      <button class="subtab" data-tab="log">Log</button>
       <button class="subtab" data-tab="plan">My Plan</button>
       <button class="subtab" data-tab="history">History</button>
+      <button class="subtab" data-tab="progress">Progress</button>
     </div>
     <div id="gymContent"></div>
   `;
@@ -29,7 +31,8 @@ export function render(container) {
   const content = container.querySelector("#gymContent");
   if (activeSubtab === "log") renderLog(content);
   else if (activeSubtab === "plan") renderPlan(content);
-  else renderHistory(content);
+  else if (activeSubtab === "history") renderHistory(content);
+  else renderProgress(content);
 }
 
 /* ---------------- My Plan ---------------- */
@@ -358,4 +361,57 @@ function historyItemHTML(s) {
       </div>
     </div>
   `;
+}
+
+/* ---------------- Progress ---------------- */
+
+function renderProgress(container) {
+  const sessions = store.getGymSessions();
+  const measurements = [...store.getMeasurements()].sort((a, b) => (a.date < b.date ? -1 : 1));
+  const units = store.getSettings().units;
+
+  const exerciseNames = new Map();
+  sessions.forEach((s) => s.entries.forEach((e) => exerciseNames.set(e.exerciseId, e.exerciseName)));
+  const exerciseOptions = [...exerciseNames.entries()];
+
+  container.innerHTML = `
+    <div class="card chart-card">
+      <div class="chart-head"><strong>Bodyweight</strong><span>${units}</span></div>
+      ${lineChartSVG(measurements.map((m) => ({ x: m.date, y: m.weightLb })), { color: "var(--accent-2)" })}
+    </div>
+    <div class="section-title">Exercise progress</div>
+    ${
+      exerciseOptions.length
+        ? `<div class="card chart-card">
+            <div class="field">
+              <label for="exerciseSelect">Exercise</label>
+              <select id="exerciseSelect">
+                ${exerciseOptions.map(([id, name]) => `<option value="${id}">${esc(name || "Unnamed exercise")}</option>`).join("")}
+              </select>
+            </div>
+            <div id="exerciseChart" style="margin-top:14px;"></div>
+          </div>`
+        : `<div class="empty-state"><span class="glyph">📈</span><p>Log a few sessions to see exercise trends here.</p></div>`
+    }
+  `;
+
+  if (exerciseOptions.length) {
+    const select = container.querySelector("#exerciseSelect");
+    const chartEl = container.querySelector("#exerciseChart");
+    function renderChart() {
+      const exId = select.value;
+      const points = sessions
+        .filter((s) => s.entries.some((e) => e.exerciseId === exId))
+        .map((s) => {
+          const entry = s.entries.find((e) => e.exerciseId === exId);
+          const weights = entry.sets.map((st) => st.weightLb).filter((w) => w != null);
+          return weights.length ? { x: s.date, y: Math.max(...weights) } : null;
+        })
+        .filter(Boolean)
+        .sort((a, b) => (a.x < b.x ? -1 : 1));
+      chartEl.innerHTML = lineChartSVG(points, { unit: " " + units });
+    }
+    renderChart();
+    select.addEventListener("change", renderChart);
+  }
 }
