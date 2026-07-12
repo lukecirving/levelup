@@ -230,6 +230,56 @@ textarea { resize: vertical; min-height: 64px; }
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+.day-card { display: flex; flex-direction: column; gap: 10px; }
+.day-card.is-today { border-color: var(--accent); }
+.day-card .day-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.day-card .day-date { font-weight: 700; font-size: 14.5px; }
+.day-card .day-date .today-badge { color: var(--accent); font-size: 11px; font-weight: 700; margin-left: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+.ride-chip {
+  border: none;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  padding: 6px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ride-chip.confirmed { color: var(--success); background: var(--accent-soft); }
+.ride-chip.maybe { color: var(--accent-2); background: var(--accent-2-soft); }
+.ride-chip.none { color: var(--danger); background: var(--danger-soft); }
+.ride-chip.unset { color: var(--text-dim); background: var(--surface-2); }
+
+.day-type-row { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; }
+.day-type-row .glyph { font-size: 16px; }
+.day-type-row.type-rest { color: var(--text-dim); }
+
+.day-detail { font-size: 13px; color: var(--text-dim); line-height: 1.45; }
+.day-detail select { margin-top: 4px; }
+
+.day-note {
+  background: transparent;
+  border: none;
+  border-bottom: 1px dashed var(--border);
+  padding: 4px 0;
+  font-size: 13px;
+  width: 100%;
+}
+.day-note:focus { border-bottom-color: var(--accent); outline: none; }
+
+.reset-link {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  color: var(--accent-2);
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .btn, .toast { transition: none; }
 }

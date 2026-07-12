@@ -1,19 +1,77 @@
+import { store } from "../store.js";
+import { showToast } from "../app.js";
 import { formatPretty, todayISO } from "../utils/dates.js";
+import * as sched from "../schedule.js";
+
+const RIDE_LABEL = { confirmed: "Ride confirmed", maybe: "Ride maybe", none: "No ride", unset: "Set ride status" };
+
+function getDeps() {
+  return {
+    gymPlan: store.getGymPlan(),
+    gymSessions: store.getGymSessions(),
+    dayPlans: store.getDayPlans(),
+    checklistItems: store.getChecklistItems(),
+    goalDate: store.getSettings().goalDate,
+  };
+}
+
+function ensureToday() {
+  const deps = getDeps();
+  const dates = sched.windowDates(todayISO(), 2);
+  const generated = sched.buildSchedule(dates, deps);
+  const dayPlans = { ...deps.dayPlans, ...generated };
+  store.setDayPlans(dayPlans);
+  return dayPlans[todayISO()];
+}
+
+function planCardHTML(plan) {
+  if (plan.type === "gym") {
+    return `
+      <div class="day-type-row"><span class="glyph">🏋️</span> Gym day</div>
+      <p class="day-detail" style="margin-top:6px;">${plan.gym.planDayLabel}</p>
+      <p class="small muted" style="margin-top:10px;">Session logging arrives in the next update.</p>
+    `;
+  }
+  if (plan.type === "home-practice") {
+    return `
+      <div class="day-type-row"><span class="glyph">⛳</span> Home practice</div>
+      <p class="day-detail" style="margin-top:6px;">${plan.golf.targetDurationMin} min · ${plan.golf.focus}</p>
+      <p class="small muted" style="margin-top:10px;">Drills library and practice logging arrive soon.</p>
+    `;
+  }
+  return `
+    <div class="day-type-row type-rest"><span class="glyph">😴</span> Rest day</div>
+    <p class="day-detail" style="margin-top:6px;">Nothing scheduled. Recover.</p>
+  `;
+}
 
 export function render(container) {
+  const plan = ensureToday();
+
   container.innerHTML = `
     <div class="card">
-      <p class="small muted">${formatPretty(todayISO())}</p>
-      <h2 style="margin-top:6px; font-size:20px;">Today's plan is coming soon</h2>
-      <p class="muted small" style="margin-top:8px; line-height:1.5;">
-        This dashboard will show your gym-or-home-practice plan for today,
-        plus quick habit and diet check-ins, once the schedule engine is built.
-      </p>
+      <div class="row between">
+        <p class="small muted">${formatPretty(todayISO())}</p>
+        <button class="ride-chip ${plan.rideStatus}" id="rideChip">${RIDE_LABEL[plan.rideStatus]}</button>
+      </div>
+      <div style="margin-top:10px;">${planCardHTML(plan)}</div>
     </div>
-    <div class="section-title">In the meantime</div>
+
+    <div class="section-title">Coming soon</div>
     <div class="card stack">
-      <p class="small">Head to <strong>Settings</strong> to set your team-tryout date so the app can start
-        weighting your practice plan as it gets closer.</p>
+      <p class="small">Gym and golf session logging, inline habit/diet check-ins, and a proper
+        dashboard land in the next few updates. Full week view is already live on the
+        <strong>Schedule</strong> tab.</p>
     </div>
   `;
+
+  container.querySelector("#rideChip").addEventListener("click", () => {
+    const date = todayISO();
+    const current = store.getDayPlans()[date];
+    const next = sched.nextRideStatus(current?.rideStatus);
+    const updated = sched.applyManualEdit(date, { rideStatus: next }, getDeps());
+    store.setDayPlans(updated);
+    render(container);
+    showToast(RIDE_LABEL[next]);
+  });
 }
