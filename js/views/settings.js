@@ -1,9 +1,12 @@
 import { store } from "../store.js";
 import { daysBetween, todayISO } from "../utils/dates.js";
 import { showToast } from "../app.js";
+import { esc } from "../utils/esc.js";
+import { uid } from "../utils/ids.js";
 
 export function render(container) {
   const settings = store.getSettings();
+  const items = store.getChecklistItems();
 
   container.innerHTML = `
     <div class="section-title">Goal</div>
@@ -20,6 +23,24 @@ export function render(container) {
         <option value="lb" ${settings.units === "lb" ? "selected" : ""}>Pounds (lb)</option>
         <option value="kg" ${settings.units === "kg" ? "selected" : ""}>Kilograms (kg)</option>
       </select>
+    </div>
+
+    <div class="section-title">Habit checklist items</div>
+    <div class="card stack">
+      ${items.filter((i) => i.category === "habit").map(itemRowHTML).join("") || `<p class="small muted">No habit items yet.</p>`}
+      <div class="row" style="gap:8px;">
+        <input type="text" id="newHabitLabel" placeholder="New habit…" style="flex:1;" />
+        <button class="btn" id="addHabitBtn">Add</button>
+      </div>
+    </div>
+
+    <div class="section-title">Diet checklist items</div>
+    <div class="card stack">
+      ${items.filter((i) => i.category === "diet").map(itemRowHTML).join("") || `<p class="small muted">No diet items yet.</p>`}
+      <div class="row" style="gap:8px;">
+        <input type="text" id="newDietLabel" placeholder="New diet item…" style="flex:1;" />
+        <button class="btn" id="addDietBtn">Add</button>
+      </div>
     </div>
 
     <div class="section-title">Backup</div>
@@ -90,5 +111,73 @@ export function render(container) {
     store.resetAll();
     showToast("All data erased");
     render(container);
+  });
+
+  wireChecklistEvents(container);
+}
+
+function itemRowHTML(item) {
+  return `
+    <div class="row between" data-item-id="${item.id}">
+      <span class="${item.active ? "" : "muted"}" style="font-size:14px;">${item.icon ? item.icon + " " : ""}${esc(item.label)}</span>
+      <div class="row" style="gap:6px;">
+        <button class="btn ghost toggle-item-btn" data-id="${item.id}" style="padding:6px 10px; font-size:12px;">${item.active ? "Hide" : "Show"}</button>
+        <button class="icon-btn delete-item-btn" data-id="${item.id}" aria-label="Delete item">✕</button>
+      </div>
+    </div>
+  `;
+}
+
+function addChecklistItem(category, label) {
+  const items = store.getChecklistItems();
+  const inCategory = items.filter((i) => i.category === category);
+  items.push({
+    id: uid(category),
+    category,
+    label,
+    icon: "",
+    active: true,
+    order: inCategory.length ? Math.max(...inCategory.map((i) => i.order)) + 1 : 1,
+  });
+  store.setChecklistItems(items);
+}
+
+function wireChecklistEvents(container) {
+  container.querySelectorAll(".toggle-item-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const items = store.getChecklistItems();
+      const item = items.find((i) => i.id === btn.dataset.id);
+      item.active = !item.active;
+      store.setChecklistItems(items);
+      render(container);
+    });
+  });
+
+  container.querySelectorAll(".delete-item-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (!confirm("Delete this checklist item? Past history for it is kept, but it won't be logged going forward.")) return;
+      const items = store.getChecklistItems().filter((i) => i.id !== btn.dataset.id);
+      store.setChecklistItems(items);
+      render(container);
+      showToast("Item deleted");
+    });
+  });
+
+  container.querySelector("#addHabitBtn").addEventListener("click", () => {
+    const input = container.querySelector("#newHabitLabel");
+    const label = input.value.trim();
+    if (!label) return;
+    addChecklistItem("habit", label);
+    render(container);
+    showToast("Habit added");
+  });
+
+  container.querySelector("#addDietBtn").addEventListener("click", () => {
+    const input = container.querySelector("#newDietLabel");
+    const label = input.value.trim();
+    if (!label) return;
+    addChecklistItem("diet", label);
+    render(container);
+    showToast("Diet item added");
   });
 }
