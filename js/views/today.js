@@ -29,7 +29,7 @@ function planCardHTML(plan) {
     return `
       <div class="day-type-row"><span class="glyph">🏋️</span> Gym day</div>
       <p class="day-detail" style="margin-top:6px;">${plan.gym.planDayLabel}</p>
-      <p class="small muted" style="margin-top:10px;">Session logging arrives in the next update.</p>
+      <p class="small muted" style="margin-top:10px;">${plan.gym.sessionLogged ? "✓ Session logged today." : "Head to the Gym tab to log this session."}</p>
     `;
   }
   if (plan.type === "home-practice") {
